@@ -1,10 +1,10 @@
 {
-  "version": "0.7.27",
-  "pub_date": "2026-10-18T08:28:37.216Z",
+  "version": "0.7.28",
+  "pub_date": "2026-10-18T16:13:07.081Z",
   "platforms": {
     "windows-x86_64-nsis": {
-      "url": "https://charizma1337.github.io/animeoncraft-updates/0.7.27/AnimeOnCraft_0.7.27_x64-setup.exe",
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVRMndtK2JUUlR1R0lkRFVSWXY2ejFVa3MzZ051ZDcrV25VTEhUcHR3ajIxb0ZnamJXc2s4KzBBV1pHeXJEM0lUZjNUQlhrZGhJMGh5bU03c3AxVndIcGE2SUZpYS9ETEFnPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkyMzEyMTE3CWZpbGU6QW5pbWVPbkNyYWZ0XzAuNy4yN194NjQtc2V0dXAuZXhlCXZlcnNpb246MC43LjI3ClZjSUErL3pydWhGYlZ1WCtJVmYrNjVHMkc3YTc0V1hJV0dsbVpHQ1VWTlEwMjYyYllGcVliLzBXNGdqQ0dkeGVvU0xJcmJYNThtMlhraXhvYU95MUN3PT0K"
+      "url": "https://charizma1337.github.io/animeoncraft-updates/0.7.28/AnimeOnCraft_0.7.28_x64-setup.exe",
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVRMndtK2JUUlR1R080aEtUU2ttTVZWb0MyTXcyVnpncWNwL0pzbUNodHRRcmU0TlZaejVaQnh6cUtmTGt0bVRGMGJNc0xNYVVMUm15V1Eya1hiSWY2RFNwcG9ZaTArc1FzPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkyMzM5OTg2CWZpbGU6QW5pbWVPbkNyYWZ0XzAuNy4yOF94NjQtc2V0dXAuZXhlCXZlcnNpb246MC43LjI4CklBbDR1SnhMOHluR1VLOTZJNW4xNlZpRjYyWGlSSEVGdm9vQkhFSWgrMENuSUp1WHd6WHJMdnpuaHQ4WEJrQXZHTkl1UHJZMzJkZGdPM0liS2ZCd0N3PT0K"
     }
   }
 }
