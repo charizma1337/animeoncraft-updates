@@ -4,44 +4,53 @@
   const $$ = (s, r = document) => [...r.querySelectorAll(s)];
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  /* ---------- Liquid lens refraction map (Chromium only supports backdrop-filter:url()) ---------- */
-  (function lensMap() {
-    const w = 200, h = 60, c = document.createElement('canvas'); c.width = w; c.height = h;
-    const g = c.getContext('2d'), img = g.createImageData(w, h), r = h / 2;
-    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-      // distance to the pill edge, pushes pixels outward near the rim like a convex lens
-      const cx = Math.min(Math.max(x, r), w - r), dx = x - cx, dy = y - r;
-      const d = Math.hypot(dx, dy) || 1, edge = Math.max(0, 1 - (r - d) / (r * .55));
-      const k = edge * edge, i = (y * w + x) * 4;
-      img.data[i] = 128 - (dx / d) * 127 * k; img.data[i + 1] = 128 - (dy / d) * 127 * k; img.data[i + 2] = 128; img.data[i + 3] = 255;
+  /* ---------- Launcher downloads ---------- */
+  async function updateDownloadCount() {
+    const count = $('#launcher-download-count');
+    const releases = 'https://api.github.com/repos/AnimeOnCraft/animeoncraft.github.io/releases';
+    const mirror = 'https://github.com/AnimeOnCraft/animeoncraft.github.io/releases/download/launcher-downloads/';
+    const installerName = /^AnimeOnCraft_\d+\.\d+\.\d+_x64-setup\.exe$/;
+    const response = await fetch(releases);
+    if (!response.ok) return;
+
+    const published = await response.json();
+    const release = published.find(item => item.tag_name === 'launcher-downloads');
+    if (!Array.isArray(release?.assets)) return;
+
+    const installers = new Map();
+    for (const { name, state, download_count: downloads } of release.assets) {
+      if (state === 'uploaded' && installerName.test(name) && Number.isSafeInteger(downloads) && downloads >= 0) {
+        installers.set(name, downloads);
+      }
     }
-    g.putImageData(img, 0, 0);
-    const fe = $('#lens feImage'); if (fe) fe.setAttribute('href', c.toDataURL());
-    const chromium = !!window.chrome && CSS.supports('backdrop-filter', 'url(#lens)');
-    if (chromium) document.documentElement.classList.add('refract');
-  })();
+    if (!installers.size) return;
+
+    const total = [...installers.values()].reduce((sum, downloads) => sum + downloads, Number(count.dataset.baseline));
+    count.textContent = `≈${total.toLocaleString('ru-RU')}`;
+    for (const link of $$('.mini-download, .hero-actions .cta')) {
+      const name = new URL(link.href).pathname.split('/').pop();
+      if (installers.has(name)) link.href = mirror + name;
+    }
+  }
+  updateDownloadCount().catch(() => {
+    // Keep the estimate and the direct links when GitHub is unavailable.
+  });
 
   /* ---------- Tabs ---------- */
-  const VIEWS = ['home', 'map', 'news', 'shots'];
-  const lens = $('.tabs .lens');
-  function placeLens(el, target, squish) {
-    if (!el || !target) return;
-    el.style.width = target.offsetWidth + 'px';
-    el.style.transform = `translateX(${target.offsetLeft}px)`;
-    if (squish && !reduced) { el.classList.remove('squish'); void el.offsetWidth; el.classList.add('squish'); }
-  }
+  const VIEWS = ['home', 'map', 'news'];
   let mapReady = false, refreshMap = () => {};
-  function show(view, squish = true) {
+  function show(view) {
     if (!VIEWS.includes(view)) view = 'home';
     $$('.view').forEach(v => { v.hidden = v.dataset.view !== view; });
     $$('.tabs a').forEach(a => { if (a.dataset.tab === view) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
-    placeLens(lens, $(`.tabs a[data-tab="${view}"]`), squish);
     if (view === 'map') { if (!mapReady) { mapReady = true; initMap(); } else refreshMap(); }
-    if (view === 'shots') placeLens($('.seg-lens'), $('.seg [aria-selected="true"]'), false);
   }
   const fromHash = () => (location.hash || '#home').slice(1);
   addEventListener('hashchange', () => { show(fromHash()); scrollTo({ top: 0, behavior: reduced ? 'auto' : 'smooth' }); });
-  addEventListener('resize', () => { placeLens(lens, $('.tabs a[aria-current]'), false); placeLens($('.seg-lens'), $('.seg [aria-selected="true"]'), false); });
+  $('.skip-link').addEventListener('click', event => {
+    event.preventDefault();
+    $('#content').focus();
+  });
 
   /* ---------- News ---------- */
   const NEWS = window.AOC_NEWS || [];
@@ -61,44 +70,10 @@
     li.append(b); list.append(li);
   });
   openNews(0);
-  if (NEWS[0]) $('#teaser-news .t-title').textContent = `${NEWS[0].v}: ${NEWS[0].title}`;
-
-  /* ---------- Screenshots ---------- */
-  const A = 'assets/shots/';
-  const ALBUMS = {
-    guild: { note: 'Гильдия искателей приключений стоит в Соре, к югу от центра. Внутри доска заданий, стойка и зал со столами.', shots: [
-      ['guild-entrance', 'Главный вход со стороны Соры', 'wide'], ['guild-northwest', 'Гильдия за стеной внешнего кольца'],
-      ['guild-hall', 'Зал и доска заданий'], ['guild-board', 'Доска заданий гильдии', 'half'], ['guild-gallery', 'Вид с галереи второго этажа', 'half'],
-      ['guild-tables', 'Столы и книжные полки', 'half'], ['sora-aerial', 'Гильдия и кольцевая стена с высоты', 'half']] },
-    sora: { note: 'Столица Одного Неба сверху: центральная площадь, пять дорог к крепостям, общие рынки и внешнее кольцо.', shots: [
-      ['sora-top', 'Сора строго сверху', 'wide square'], ['sora-aerial', 'Внешнее кольцо и гильдия с птичьего полёта'], ['guild-northwest', 'Стена внешнего кольца']] },
-    rift: { note: 'Врата Разлома стоят на восточной стороне внешнего кольца Соры. Портал в зале ведёт в подземелье Склеп Сакуры.', shots: [
-      ['rift-outside', 'Врата Разлома снаружи', 'wide'], ['rift-crypt', 'Склеп Сакуры: первые залы'], ['rift-boss', 'Арена Вишнёвого сёгуна']] },
-  };
-  const gallery = $('#gallery'); let current = [], lbIndex = 0;
-  function album(key) {
-    const al = ALBUMS[key]; current = al.shots;
-    $$('.seg button').forEach(b => b.setAttribute('aria-selected', String(b.dataset.album === key)));
-    placeLens($('.seg-lens'), $(`.seg [data-album="${key}"]`), false);
-    $('#album-note').textContent = al.note;
-    gallery.replaceChildren(...al.shots.map(([f, cap, cls = ''], i) => {
-      const b = document.createElement('button'); b.type = 'button'; b.className = 'shot glass ' + cls;
-      b.innerHTML = `<img src="${A}${f}${cls.includes('wide') ? '' : '-s'}.webp" alt="" loading="lazy"><span class="cap"></span>`;
-      $('img', b).alt = cap; $('.cap', b).textContent = cap;
-      b.addEventListener('click', () => openLb(i)); return b;
-    }));
+  if (NEWS[0]) {
+    const { v, title } = NEWS[0];
+    $('#teaser-news .t-title').textContent = title.includes(v) ? title : `${v}: ${title}`;
   }
-  $$('.seg button').forEach(b => b.addEventListener('click', () => album(b.dataset.album)));
-  album('guild');
-
-  const lb = $('#lightbox');
-  function openLb(i) { lbIndex = (i + current.length) % current.length; const [f, cap] = current[lbIndex]; $('#lb-img').src = A + f + '.webp'; $('#lb-img').alt = cap; $('#lb-cap').textContent = cap; lb.hidden = false; $('#lb-close').focus(); }
-  const closeLb = () => { lb.hidden = true; };
-  $('#lb-close').addEventListener('click', closeLb);
-  $('#lb-prev').addEventListener('click', () => openLb(lbIndex - 1));
-  $('#lb-next').addEventListener('click', () => openLb(lbIndex + 1));
-  lb.addEventListener('click', e => { if (e.target === lb) closeLb(); });
-  addEventListener('keydown', e => { if (lb.hidden) return; if (e.key === 'Escape') closeLb(); if (e.key === 'ArrowLeft') openLb(lbIndex - 1); if (e.key === 'ArrowRight') openLb(lbIndex + 1); });
 
   /* ---------- Map ---------- */
   function initMap() {
@@ -108,13 +83,12 @@
     const COLORS = { sora: '#ffffff', res: '#ffd36b', place: '#c9d2e3', event: '#c06bff' };
     const root = el('g'); svg.append(root);
     const defs = el('defs'); const cp = el('clipPath', { id: 'world-clip' }); cp.append(el('circle', { cx: 0, cy: 0, r: R * .995 })); defs.append(cp); svg.append(defs);
-    const rf = W.relief || { x0: -R, z0: -R, w: 2 * R, h: 2 * R };
-    root.append(el('image', { href: 'assets/relief.webp', x: rf.x0, y: rf.z0, width: rf.w, height: rf.h, 'clip-path': 'url(#world-clip)', preserveAspectRatio: 'none' }));
+    const relief = W.relief || { x0: -R, z0: -R, w: 2 * R, h: 2 * R };
+    root.append(el('image', { href: 'assets/relief.webp', x: relief.x0, y: relief.z0, width: relief.w, height: relief.h, 'clip-path': 'url(#world-clip)', preserveAspectRatio: 'none' }));
     root.append(el('circle', { cx: 0, cy: 0, r: R, fill: 'none', stroke: 'rgba(255,255,255,.35)', 'stroke-width': 2, 'vector-effect': 'non-scaling-stroke' }));
     const shade = el('circle', { cx: 0, cy: 0, r: R, fill: 'rgba(22,12,43,.38)' }); root.append(shade);
-    // Faction lands (east: Рассвет, west: Сумрак); north and south stay neutral.
-    const lands = el('g', { 'data-layer': 'lands' }); root.append(lands);
-    (W.territories || []).forEach(t => { const c = W.clans[t.k]; const poly = el('polygon', { points: t.p.map(p => p.join(',')).join(' '), fill: c, 'fill-opacity': .16, stroke: c, 'stroke-opacity': .7, 'stroke-width': 2, 'vector-effect': 'non-scaling-stroke' }); const tt = el('title'); tt.textContent = t.n; poly.append(tt); lands.append(poly); });
+    const lands = el('g', { 'data-layer': 'territories' }); root.append(lands);
+    (W.territories || []).forEach(t => { const color = W.clans[t.k], polygon = el('polygon', { points: t.p.map(p => p.join(',')).join(' '), fill: color, 'fill-opacity': .16, stroke: color, 'stroke-opacity': .7, 'stroke-width': 2, 'vector-effect': 'non-scaling-stroke' }); const title = el('title'); title.textContent = t.n; polygon.append(title); lands.append(polygon); });
     const roads = el('g', { 'data-layer': 'roads' }); root.append(roads);
     W.roads.forEach(rd => roads.append(el('polyline', { points: rd.p.map(p => p.join(',')).join(' '), fill: 'none', stroke: rd.s === 'main' ? 'rgba(255,240,225,.85)' : 'rgba(255,240,225,.5)', 'stroke-width': rd.s === 'main' ? 2.4 : 1.4, 'stroke-dasharray': rd.s === 'cross' ? '4 4' : '', 'stroke-linecap': 'round', 'vector-effect': 'non-scaling-stroke' })));
     const layers = {}; ['res', 'place', 'event', 'clan', 'sora'].forEach(k => { layers[k] = el('g', { 'data-layer': k }); root.append(layers[k]); });
@@ -129,6 +103,9 @@
       layers[p.c].append(g);
       const pick = () => { card.hidden = false; $('.mc-type', card).textContent = p.t; $('.mc-name', card).textContent = p.n; $('.mc-xz', card).textContent = `X ${p.x}, Z ${p.z}`; };
       g.addEventListener('pointerenter', pick); g.addEventListener('focus', pick); g.addEventListener('click', e => { e.stopPropagation(); pick(); });
+      g.addEventListener('keydown', e => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(); }
+      });
       return { p, g, halo, dot, label, big };
     });
     // Sora is drawn on top of its own ring; nudge the guild and the gate apart a little in screen space when zoomed out.
@@ -163,7 +140,7 @@
     refreshMap = () => { fit(); if (!view.w || view.w > home.w * 1.2) view = { ...home }; apply(); };
     frame.addEventListener('wheel', e => { e.preventDefault(); const b = frame.getBoundingClientRect(); zoom(Math.exp(e.deltaY * .0015), e.clientX - b.left, e.clientY - b.top); }, { passive: false });
     const ptrs = new Map(); let pinch = 0;
-    frame.addEventListener('pointerdown', e => { if (e.target.closest('.map-zoom')) return; frame.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY }); frame.classList.add('drag'); });
+    frame.addEventListener('pointerdown', e => { if (e.target.closest('.map-zoom')) return; e.target.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY }); frame.classList.add('drag'); });
     frame.addEventListener('pointermove', e => {
       if (!ptrs.has(e.pointerId)) return; const prev = ptrs.get(e.pointerId); ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
       const b = frame.getBoundingClientRect(), u = view.w / b.width;
@@ -177,11 +154,11 @@
     $$('.map-filters .pill').forEach(b => b.addEventListener('click', () => {
       const on = !b.classList.contains('on'); b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on));
       const g = $(`[data-layer="${b.dataset.layer}"]`, svg); if (g) g.style.display = on ? '' : 'none';
+      if (b.dataset.layer === 'clan') lands.style.display = on ? '' : 'none';
     }));
     // start with Sora's neighbourhood readable: open on the whole world but show Sora's card
     const sora = pois.find(o => o.p.c === 'sora'); if (sora) { card.hidden = false; $('.mc-type', card).textContent = sora.p.t; $('.mc-name', card).textContent = sora.p.n; $('.mc-xz', card).textContent = 'X 0, Z 0'; }
   }
 
-  show(fromHash(), false);
-  document.fonts?.ready.then(() => { placeLens(lens, $('.tabs a[aria-current]'), false); placeLens($('.seg-lens'), $('.seg [aria-selected="true"]'), false); });
+  show(fromHash());
 })();
